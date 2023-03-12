@@ -1,7 +1,5 @@
-"use strict";
-
 const Users = require("../models/users");
-const { use } = require("../routes/users");
+const jwt = require("jsonwebtoken");
 
 const controller = {
   save: async (req, res) => {
@@ -12,7 +10,6 @@ const controller = {
     user.name = params.name;
     user.email = params.email;
     user.password = params.password;
-    user.token = params.token;
     user.active = true;
 
     if (!user.name || !user.email || !user.password) {
@@ -77,10 +74,13 @@ const controller = {
         data: [],
       });
 
-    const userFound = await Users.findOne({
-      email: email,
-      password: password,
-    });
+    const userFound = await Users.findOne(
+      {
+        email: email,
+        password: password,
+      },
+      { password: 0, id: 0 }
+    );
 
     if (!userFound) {
       return res.status(404).send({
@@ -90,37 +90,54 @@ const controller = {
       });
     }
 
-    return res.status(200).send({
-      error: false,
-      message: "Sesión iniciada correctamente",
-      data: userFound,
+    const token = jwt.sign({ id: userFound.id }, "secretKey", {
+      expiresIn: "5h",
     });
-  },
 
-  delete: (req, res) => {
-    const id = req.params.id;
+    userFound.token = token;
 
-    Users.findByIdAndRemove(id, (err, userRemoved) => {
+    await userFound.save((err, userStored) => {
       if (err)
         return res.status(500).send({
           error: true,
-          message: "Error al eliminar el usuario",
-          data: [],
-        });
-
-      if (!userRemoved)
-        return res.status(404).send({
-          error: true,
-          message: "No se ha podido eliminar el usuario",
+          message: "Error al guardar el token",
           data: [],
         });
 
       return res.status(200).send({
         error: false,
-        message: "Usuario eliminado correctamente",
-        data: userRemoved,
+        message: "Sesión iniciada correctamente",
+        data: userFound,
       });
     });
+  },
+
+  delete: async (req, res) => {
+    const email = req.body.email;
+
+    try {
+      const deletedUser = await Users.findOneAndDelete({ email: email });
+
+      if (!deletedUser) {
+        return res.status(404).send({
+          error: true,
+          message: "El usuario no existe",
+          data: [],
+        });
+      }
+
+      return res.status(200).send({
+        error: false,
+        message: "Usuario eliminado correctamente",
+        data: [],
+      });
+    } catch (error) {
+      return res.status(500).send({
+        error: true,
+        message: "Error al eliminar el usuario",
+        data: [],
+      });
+    }
   },
 };
 
