@@ -39,12 +39,13 @@ const controller = {
     }
 
     user.save((err, userStored) => {
-      if (err)
+      if (err) {
         return res.status(500).send({
           error: true,
           message: "Error al guardar el usuario",
           data: [],
         });
+      }
 
       if (!userStored)
         return res.status(404).send({

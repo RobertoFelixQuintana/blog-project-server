@@ -2,7 +2,12 @@
 
 const express = require("express");
 const mongoose = require("mongoose");
+
+//Routes
 const users_routes = require("./routes/users");
+const issues_routes = require("./routes/issues");
+const comments_routes = require("./routes/comments");
+
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -31,6 +36,8 @@ app.use((req, res, next) => {
 });
 
 app.use("/api", users_routes);
+app.use("/api", issues_routes);
+app.use("/api", comments_routes);
 
 mongoose.set("strictQuery", false);
 
