@@ -1,4 +1,6 @@
 const Users = require("../models/users");
+const Posts = require("../models/Issues");
+const Comments = require("../models/Comments");
 const jwt = require("jsonwebtoken");
 
 const controller = {
@@ -113,11 +115,42 @@ const controller = {
     });
   },
 
+  editUser: async (req, res) => {
+    const {} = req.body;
+
+    const user = await Users.findById(id);
+
+    if (!user) {
+      return res.status(404).send({
+        error: true,
+        message: "El usuario no existe",
+        data: [],
+      });
+    }
+
+    return res.status(200).send({
+      error: false,
+      message: "Usuario actualizado correctamente",
+      data: user,
+    });
+  },
+
   delete: async (req, res) => {
-    const email = req.body.email;
+    const { id } = req.body;
 
     try {
-      const deletedUser = await Users.findOneAndDelete({ email: email });
+      if (!id) {
+        return res.status(404).send({
+          error: true,
+          message: "Los campos son obligatorios",
+          data: [],
+        });
+      }
+
+      await Comments.deleteMany({ user: id });
+      await Posts.deleteMany({ user: id });
+
+      const deletedUser = await Users.findOneAndDelete({ _id: id });
 
       if (!deletedUser) {
         return res.status(404).send({

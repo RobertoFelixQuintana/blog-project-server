@@ -46,6 +46,7 @@ const controller = {
 
   getPostsById: async (req, res) => {
     const { id } = req.params;
+    const { byUser } = req.query;
 
     if (!id) {
       return res.status(404).send({
@@ -58,7 +59,7 @@ const controller = {
     try {
       const postFound = await Issues.aggregate([
         {
-          $match: { _id: id },
+          $match: { [byUser ? "user" : "_id"]: id },
         },
         {
           $lookup: {
@@ -93,6 +94,14 @@ const controller = {
 
       const [userPost] = postFound;
 
+      if (byUser) {
+        return res.status(200).send({
+          error: false,
+          message: "Post encontrado",
+          data: postFound,
+        });
+      }
+
       return res.status(200).send({
         error: false,
         message: "Post encontrado",
@@ -105,6 +114,48 @@ const controller = {
         data: [],
       });
     }
+  },
+
+  editPost: async (req, res) => {
+    const params = req.body;
+
+    if (!params.id || !params.title || !params.description) {
+      return res.status(404).send({
+        error: true,
+        message: "Los datos son obligatorios",
+        data: [],
+      });
+    }
+
+    const issues = await Issues.findOne({ _id: params.id });
+
+    if (!issues) {
+      return res.status(404).send({
+        error: true,
+        message: "El post no existe",
+        data: [],
+      });
+    }
+
+    issues.title = params.title;
+    issues.description = params.description;
+    issues.active = params.active;
+
+    await issues.save((err, postsStored) => {
+      if (err) {
+        return res.status(500).send({
+          error: true,
+          message: "Error al guardar el post",
+          data: [],
+        });
+      }
+
+      return res.status(200).send({
+        error: false,
+        message: "Post actualizado correctamente",
+        data: postsStored,
+      });
+    });
   },
 
   setLike: async (req, res) => {
