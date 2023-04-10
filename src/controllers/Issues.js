@@ -112,7 +112,6 @@ const controller = {
         data: posts,
       });
     } catch (err) {
-      console.error(err);
       return res.status(500).send({
         error: true,
         message: "Ha ocurrido un error al buscar los posts",
@@ -221,7 +220,6 @@ const controller = {
     if (typeof params.anonymous === "boolean") {
       issues.anonymous = params.anonymous;
     }
-    console.log(params?.email);
     const user = await Users.findOne({ email: params.email });
 
     if (!issues.anonymous && user) {

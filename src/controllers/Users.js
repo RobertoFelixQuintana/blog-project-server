@@ -189,7 +189,7 @@ const controller = {
       });
     }
 
-    const user = await Users.findOne({ email: email, password: password });
+    const user = await Users.findOne({ _id: id, password: password });
 
     if (!user) {
       return res.status(404).send({
