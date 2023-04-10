@@ -2,9 +2,86 @@ const Issues = require("../models/Issues");
 const Users = require("../models/users");
 
 const controller = {
+  getStatsByIssues: async (req, res) => {
+    try {
+      const issues = await Issues.aggregate([
+        {
+          $lookup: {
+            from: "comments",
+            let: { issuesId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$issuesId", "$$issuesId"],
+                  },
+                },
+              },
+              {
+                $project: {
+                  _id: 0,
+                  issuesId: 0,
+                },
+              },
+            ],
+            as: "comments",
+          },
+        },
+      ]);
+
+      let totalComments = 0;
+      let totalLikes = 0;
+
+      issues?.forEach((issue) => {
+        const { comments } = issue;
+
+        totalComments = totalComments + parseInt(comments?.length ?? 0);
+        totalLikes = totalLikes + parseInt(issue?.likes?.length ?? 0);
+      });
+
+      const stats = [
+        {
+          label: "Total de comentarios",
+          value: totalComments,
+        },
+        {
+          label: "Total de likes",
+          value: totalLikes,
+        },
+      ];
+
+      return res.status(200).send({
+        error: false,
+        message: "Estadisticas encontradas",
+        data: {
+          totalInteractions: stats,
+          totalIssues: [
+            {
+              label: "Total de tareas cerradas",
+              value: issues.filter((issue) => issue.active === false).length,
+            },
+            {
+              label: "Total de tareas activas",
+              value: issues.filter((issue) => issue.active === true).length,
+            },
+          ],
+        },
+      });
+    } catch (err) {
+      return res.status(500).send({
+        error: true,
+        message: "Ha ocurrido un error al buscar las estadisticas",
+        data: [],
+      });
+    }
+  },
+
   getPosts: async (req, res) => {
     try {
       const posts = await Issues.aggregate([
+        {
+          $match: { active: true },
+        },
         {
           $lookup: {
             from: "comments",
@@ -140,6 +217,18 @@ const controller = {
     issues.title = params.title;
     issues.description = params.description;
     issues.active = params.active;
+
+    if (typeof params.anonymous === "boolean") {
+      issues.anonymous = params.anonymous;
+    }
+    console.log(params?.email);
+    const user = await Users.findOne({ email: params.email });
+
+    if (!issues.anonymous && user) {
+      issues.author = user?.name;
+    } else {
+      issues.author = "Anónimo";
+    }
 
     await issues.save((err, postsStored) => {
       if (err) {

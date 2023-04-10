@@ -4,6 +4,49 @@ const Comments = require("../models/Comments");
 const jwt = require("jsonwebtoken");
 
 const controller = {
+  getStatsByUsers: async (req, res) => {
+    const startOfMonth = new Date();
+    startOfMonth.setMonth(startOfMonth.getMonth() - 7);
+    startOfMonth.setDate(1);
+
+    const stats = await Users.aggregate([
+      {
+        $match: {
+          created: { $gte: startOfMonth },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m",
+              date: "$created",
+            },
+          },
+          users: { $sum: 1 },
+        },
+      },
+      {
+        $sort: {
+          _id: 1,
+        },
+      },
+      {
+        $project: {
+          date: "$_id",
+          users: 1,
+          _id: 0,
+        },
+      },
+    ]);
+
+    return res.status(200).json({
+      error: false,
+      message: "Estadísticas de usuarios",
+      data: stats,
+    });
+  },
+
   save: async (req, res) => {
     const params = req.body;
 
@@ -116,22 +159,63 @@ const controller = {
   },
 
   editUser: async (req, res) => {
-    const {} = req.body;
+    const { id, email, name, password } = req.body;
 
-    const user = await Users.findById(id);
-
-    if (!user) {
+    if (!password || !id) {
       return res.status(404).send({
         error: true,
-        message: "El usuario no existe",
+        message: "Los campos son obligatorios",
         data: [],
       });
     }
 
-    return res.status(200).send({
-      error: false,
-      message: "Usuario actualizado correctamente",
-      data: user,
+    if (password.length < 6) {
+      return res.status(404).send({
+        error: true,
+        message: "La contraseña debe tener al menos 6 caracteres",
+        data: [],
+      });
+    }
+
+    const usersByEmail = Users.find({
+      email: email,
+    });
+
+    if (usersByEmail?.length > 1) {
+      return res.status(404).send({
+        error: true,
+        message: "El email ya está registrado",
+        data: [],
+      });
+    }
+
+    const user = await Users.findOne({ email: email, password: password });
+
+    if (!user) {
+      return res.status(404).send({
+        error: true,
+        message: "El usuario o contraseña son incorrectos",
+        data: {},
+      });
+    }
+
+    user.name = name;
+    user.email = email;
+
+    await user.save((err, userStored) => {
+      if (err) {
+        return res.status(500).send({
+          error: true,
+          message: "Error al guardar el usuario",
+          data: {},
+        });
+      }
+
+      return res.status(200).send({
+        error: false,
+        message: "Usuario actualizado correctamente",
+        data: userStored,
+      });
     });
   },
 

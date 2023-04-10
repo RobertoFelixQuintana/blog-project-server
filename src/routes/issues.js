@@ -5,6 +5,7 @@ const router = express.Router();
 const controller = require("../controllers/Issues");
 const verifyToken = require("../middleware/verifyToken");
 
+router.get("/get-stats-by-issues", verifyToken, controller.getStatsByIssues);
 router.get("/get-posts", verifyToken, controller.getPosts);
 router.get("/get-posts/:id", verifyToken, controller.getPostsById);
 router.put("/edit-post", verifyToken, controller.editPost);
