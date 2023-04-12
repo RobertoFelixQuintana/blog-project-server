@@ -215,7 +215,10 @@ const controller = {
 
     issues.title = params.title;
     issues.description = params.description;
-    issues.active = params.active;
+
+    if (typeof params.active === "boolean") {
+      issues.active = params.active;
+    }
 
     if (typeof params.anonymous === "boolean") {
       issues.anonymous = params.anonymous;
